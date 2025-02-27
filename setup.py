@@ -9,6 +9,15 @@ setup(
         "numpy>=1.19.0",
         "protobuf>=3.14.0",
     ],
+    extras_require={
+        "dev": [
+            "pytest>=6.0.0",
+            "requests-mock>=1.9.0",
+            "pytest-cov>=2.11.0",
+            "flake8>=3.8.0",
+            "mypy>=0.790",
+        ],
+    },
     python_requires=">=3.7",
     author="",
     author_email="",

@@ -16,6 +16,12 @@ cd dvid-point-cloud
 pip install -e .
 ```
 
+For development, install with extra dependencies:
+
+```bash
+pip install -e ".[dev]"
+```
+
 ## Usage
 
 Generate a uniform point cloud from a DVID label:
@@ -51,4 +57,32 @@ The protocol buffer definitions need to be compiled before use:
 ```bash
 cd dvid_point_cloud/proto
 protoc --python_out=. labelindex.proto
+```
+
+## Development
+
+### Running Tests
+
+```bash
+# Run all tests
+pytest
+
+# Run tests with coverage report
+pytest --cov=dvid_point_cloud
+
+# Run a specific test file
+pytest tests/test_sampling.py
+
+# Run a specific test
+pytest tests/test_sampling.py::test_uniform_sample_integration
+```
+
+### Linting and Type Checking
+
+```bash
+# Run linter
+flake8 dvid_point_cloud
+
+# Run type checker
+mypy dvid_point_cloud
 ```
