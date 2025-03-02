@@ -27,7 +27,7 @@ def decode_block_coord(encoded_coord: int) -> Tuple[int, int, int]:
     return z, y, x
 
 
-def parse_rles(binary_data: bytes) -> List[Tuple[int, int, int, int]]:
+def parse_rles(binary_data: bytes) -> Tuple[np.ndarray, np.ndarray]:
     """
     Parse run-length encoded data from DVID's sparsevol format.
     
@@ -35,7 +35,9 @@ def parse_rles(binary_data: bytes) -> List[Tuple[int, int, int, int]]:
         binary_data: Binary data in DVID RLE format
         
     Returns:
-        List of (x, y, z, length) tuples representing runs of voxels
+        Tuple of (starts_zyx, lengths) where:
+          - starts_zyx is a numpy array of shape (N, 3) with the ZYX start coordinate of each run
+          - lengths is a numpy array of shape (N,) with the length of each run along X axis
     """
     offset = 0
     
@@ -61,9 +63,12 @@ def parse_rles(binary_data: bytes) -> List[Tuple[int, int, int, int]]:
     
     logger.debug(f"Sparse volume RLE: {num_spans} spans, payload_descriptor={payload_descriptor}")
     
-    runs = []
+    # Pre-allocate arrays for vectorized processing
+    starts_xyz = np.zeros((num_spans, 3), dtype=np.int32)
+    lengths = np.zeros(num_spans, dtype=np.int32)
+    
     # Parse RLE spans
-    for _ in range(num_spans):
+    for i in range(num_spans):
         x = struct.unpack("<i", binary_data[offset:offset+4])[0]
         offset += 4
         
@@ -76,14 +81,18 @@ def parse_rles(binary_data: bytes) -> List[Tuple[int, int, int, int]]:
         run_length = struct.unpack("<i", binary_data[offset:offset+4])[0]
         offset += 4
         
-        runs.append((x, y, z, run_length))
+        starts_xyz[i] = [x, y, z]
+        lengths[i] = run_length
         
         # Skip payload if present
         if payload_descriptor > 0:
             payload_size = 0  # Calculate based on descriptor and run_length
             offset += payload_size
     
-    return runs
+    # Convert from XYZ to ZYX for easier numpy operations
+    starts_zyx = starts_xyz[:, ::-1]
+    
+    return starts_zyx, lengths
 
 
 def rles_to_points(runs: List[Tuple[int, int, int, int]], total_voxels: int, 
@@ -135,3 +144,33 @@ def rles_to_points(runs: List[Tuple[int, int, int, int]], total_voxels: int,
         voxel_counter = run_end
     
     return points
+
+
+def vectorized_sample_from_rles(starts_zyx: np.ndarray, lengths: np.ndarray, 
+                               num_points: int) -> np.ndarray:
+    """
+    Generate a point cloud sample from run-length encoded data using vectorized operations.
+    
+    Args:
+        starts_zyx: Array of shape (N, 3) with the ZYX start coordinates of each run
+        lengths: Array of shape (N,) with the length of each run
+        num_points: Number of points to sample
+        
+    Returns:
+        Array of shape (num_points, 3) with the ZYX coordinates of sampled points
+    """
+    # Sample rows with probability proportional to run length
+    chosen_rows = np.random.choice(
+        len(starts_zyx),
+        num_points,
+        replace=True,
+        p=lengths / lengths.sum()
+    )
+    
+    # Get the start coordinates for each sampled row
+    points_zyx = starts_zyx[chosen_rows].copy()
+    
+    # Add random offset in the X dimension (Z in ZYX coordinates)
+    points_zyx[:, 2] += np.random.randint(0, lengths[chosen_rows])
+    
+    return points_zyx

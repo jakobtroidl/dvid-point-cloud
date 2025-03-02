@@ -7,6 +7,7 @@ setup(
     install_requires=[
         "requests>=2.25.0",
         "numpy>=1.19.0",
+        "pandas>=1.2.0",
         "protobuf>=3.14.0",
     ],
     extras_require={

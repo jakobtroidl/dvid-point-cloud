@@ -41,7 +41,8 @@ class DVIDClient:
         response.raise_for_status()
         return response.content
 
-    def get_sparse_vol(self, uuid: str, instance: str, label_id: int, format: str = "rles") -> bytes:
+    def get_sparse_vol(self, uuid: str, instance: str, label_id: int, 
+                   format: str = "rles", scale: int = 0, supervoxels: bool = False) -> bytes:
         """
         Get sparse volume data for a specific label ID.
         
@@ -50,12 +51,21 @@ class DVIDClient:
             instance: Name of the labelmap instance (usually 'segmentation')
             label_id: Label ID to query
             format: Format of the sparse volume ('rles' or 'blocks')
+            scale: Resolution scale (0 is highest resolution)
+            supervoxels: If True, returns supervoxel data instead of agglomerated body data
 
         Returns:
             Binary encoded sparse volume data
         """
         url = f"{self.server}/api/node/{uuid}/{instance}/sparsevol/{label_id}"
         params = {"format": format}
+        
+        if scale > 0:
+            params["scale"] = scale
+            
+        if supervoxels:
+            params["supervoxels"] = "true"
+            
         logger.debug(f"GET request to {url} with params {params}")
         
         response = self.session.get(url, params=params, timeout=self.timeout)
