@@ -23,23 +23,6 @@ class DVIDClient:
         self.timeout = timeout
         self.session = requests.Session()
 
-    def get_label_index(self, uuid: str, instance: str, label_id: int) -> bytes:
-        """
-        Get the label index for a specific label ID.
-        
-        Args:
-            uuid: UUID of the DVID node
-            instance: Name of the labelmap instance (usually 'segmentation')
-            label_id: Label ID to query
-
-        Returns:
-            Protobuf-encoded label index data
-        """
-        url = f"{self.server}/api/node/{uuid}/{instance}/index/{label_id}"
-        logger.debug(f"GET request to {url}")
-        response = self.session.get(url, timeout=self.timeout)
-        response.raise_for_status()
-        return response.content
 
     def get_sparse_vol(self, uuid: str, instance: str, label_id: int, 
                    format: str = "rles", scale: int = 0, supervoxels: bool = False) -> bytes:

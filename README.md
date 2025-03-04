@@ -65,7 +65,7 @@ points_s3 = dpc.uniform_sample(server, uuid, label_id, density, scale=3)
 Sample a specific number of points instead of a density:
 
 ```python
-# Sample exactly 1000 points
+# Sample 1000 points (possibly but unlikely duplicates exist)
 points = dpc.uniform_sample(server, uuid, label_id, 1000)
 ```
 
@@ -100,9 +100,9 @@ Generate point clouds for multiple bodies:
 
 ```python
 body_ids = [189310, 189311, 189312]
+# sample 10% of voxels
 body_points = dpc.sample_for_bodies(
-    server, uuid, "segmentation", body_ids,
-    num_points_per_body=1000, scale=0
+    server, uuid, "segmentation", body_ids, 0.1, scale=0
 )
 
 # body_points is a dictionary mapping body IDs to point clouds
@@ -141,16 +141,6 @@ print(json.dumps(layer_json))
 - numpy
 - pandas
 - requests
-- protobuf
-
-## Building Protocol Buffers
-
-The protocol buffer definitions need to be compiled before use:
-
-```bash
-cd dvid_point_cloud/proto
-protoc --python_out=. labelindex.proto
-```
 
 ## Performance
 
@@ -187,3 +177,6 @@ flake8 dvid_point_cloud
 # Run type checker
 mypy dvid_point_cloud
 ```
+
+
+

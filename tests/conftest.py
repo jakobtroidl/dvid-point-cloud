@@ -9,8 +9,6 @@ import numpy as np
 import pytest
 import requests_mock
 
-from dvid_point_cloud.proto.labelindex_pb2 import LabelIndex, SVCount
-
 
 @pytest.fixture
 def mock_server():
@@ -19,41 +17,6 @@ def mock_server():
         yield m
 
 
-@pytest.fixture
-def create_label_index():
-    """Create a label index protobuf message for testing."""
-    def _create_label_index(label_id: int, blocks: Dict[Tuple[int, int, int], Dict[int, int]]):
-        """
-        Create a label index protobuf message.
-        
-        Args:
-            label_id: Label ID
-            blocks: Dictionary mapping block coordinates (z, y, x) to dictionaries mapping 
-                   supervoxel IDs to voxel counts
-        
-        Returns:
-            Serialized LabelIndex protobuf message
-        """
-        label_index = LabelIndex()
-        label_index.label = label_id
-        label_index.last_mut_id = 1
-        label_index.last_mod_time = "2025-01-01T00:00:00Z"
-        label_index.last_mod_user = "test_user"
-        label_index.last_mod_app = "test_app"
-        
-        for (z, y, x), supervoxels in blocks.items():
-            # Encode block coordinate as uint64 using 21 bits per dimension
-            block_id = (z << 42) | (y << 21) | x
-            
-            sv_count = SVCount()
-            for supervoxel_id, count in supervoxels.items():
-                sv_count.counts[supervoxel_id] = count
-                
-            label_index.blocks[block_id] = sv_count
-            
-        return label_index.SerializeToString()
-    
-    return _create_label_index
 
 
 @pytest.fixture
@@ -111,7 +74,7 @@ def generate_sparse_volume():
             
         Returns:
             Tuple containing:
-                - Dictionary mapping block coordinates to supervoxel counts
+                - None (placeholder to maintain compatibility)
                 - List of runs (x, y, z, length)
                 - Total number of voxels in the label
         """
@@ -160,29 +123,6 @@ def generate_sparse_volume():
                     if 0 <= nx < x_size and 0 <= ny < y_size and 0 <= nz < z_size and not volume[nx, ny, nz]:
                         neighbors.append((nx, ny, nz))
         
-        # Define block size (64x64x64)
-        block_size = 64
-        
-        # Convert volume to blocks
-        blocks = {}
-        for z in range(0, z_size, block_size):
-            for y in range(0, y_size, block_size):
-                for x in range(0, x_size, block_size):
-                    # Extract block
-                    block = volume[x:min(x+block_size, x_size),
-                                  y:min(y+block_size, y_size),
-                                  z:min(z+block_size, z_size)]
-                    
-                    # Count voxels in block
-                    count = np.sum(block)
-                    
-                    if count > 0:
-                        # Block coordinate
-                        bx, by, bz = x // block_size, y // block_size, z // block_size
-                        
-                        # Add to blocks dictionary (using only one supervoxel per block for simplicity)
-                        blocks[(bz, by, bx)] = {label_id: int(count)}
-        
         # Convert volume to runs along X dimension
         runs = []
         for z in range(z_size):
@@ -202,6 +142,6 @@ def generate_sparse_volume():
                         run_start = None
                         run_length = 0
         
-        return blocks, runs, current_voxels
+        return None, runs, current_voxels
     
     return _generate_sparse_volume

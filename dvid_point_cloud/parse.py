@@ -9,24 +9,6 @@ import numpy as np
 logger = logging.getLogger(__name__)
 
 
-def decode_block_coord(encoded_coord: int) -> Tuple[int, int, int]:
-    """
-    Decode a packed block coordinate into (z, y, x) coordinates.
-    
-    Args:
-        encoded_coord: Block coordinate encoded as a uint64
-        
-    Returns:
-        Tuple of (z, y, x) coordinates (positive integers)
-    """
-    # DVID block coordinates are assumed to be positive integers
-    x = encoded_coord & 0x1FFFFF          # Extract bits 0-20 for X
-    y = (encoded_coord >> 21) & 0x1FFFFF  # Extract bits 21-41 for Y
-    z = (encoded_coord >> 42) & 0x1FFFFF  # Extract bits 42-62 for Z
-    
-    return z, y, x
-
-
 def parse_rles(binary_data: bytes) -> Tuple[np.ndarray, np.ndarray]:
     """
     Parse run-length encoded data from DVID's sparsevol format.
@@ -46,9 +28,13 @@ def parse_rles(binary_data: bytes) -> Tuple[np.ndarray, np.ndarray]:
     offset += 1
     
     num_dimensions = binary_data[offset]
+    if num_dimensions != 3:
+        raise ValueError(f"Expected 3 dimensions, got {num_dimensions}")
     offset += 1
     
     dimension_of_run = binary_data[offset]
+    if dimension_of_run != 0:
+        raise ValueError(f"Expected X dimension (0) runs, got dimension {dimension_of_run} instead")
     offset += 1
     
     # Skip reserved byte
@@ -112,7 +98,6 @@ def rles_to_points(runs: List[Tuple[int, int, int, int]], total_voxels: int,
     num_samples = len(sample_indices)
     points = np.zeros((num_samples, 3), dtype=np.int32)
     
-    current_index = 0
     voxel_counter = 0
     sample_idx = 0
     
@@ -146,31 +131,3 @@ def rles_to_points(runs: List[Tuple[int, int, int, int]], total_voxels: int,
     return points
 
 
-def vectorized_sample_from_rles(starts_zyx: np.ndarray, lengths: np.ndarray, 
-                               num_points: int) -> np.ndarray:
-    """
-    Generate a point cloud sample from run-length encoded data using vectorized operations.
-    
-    Args:
-        starts_zyx: Array of shape (N, 3) with the ZYX start coordinates of each run
-        lengths: Array of shape (N,) with the length of each run
-        num_points: Number of points to sample
-        
-    Returns:
-        Array of shape (num_points, 3) with the ZYX coordinates of sampled points
-    """
-    # Sample rows with probability proportional to run length
-    chosen_rows = np.random.choice(
-        len(starts_zyx),
-        num_points,
-        replace=True,
-        p=lengths / lengths.sum()
-    )
-    
-    # Get the start coordinates for each sampled row
-    points_zyx = starts_zyx[chosen_rows].copy()
-    
-    # Add random offset in the X dimension (Z in ZYX coordinates)
-    points_zyx[:, 2] += np.random.randint(0, lengths[chosen_rows])
-    
-    return points_zyx

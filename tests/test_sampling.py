@@ -9,25 +9,7 @@ import pytest
 
 from dvid_point_cloud.client import DVIDClient
 from dvid_point_cloud.parse import parse_rles, rles_to_points
-from dvid_point_cloud.sampling import count_total_voxels, uniform_sample
-
-
-def test_count_total_voxels(create_label_index):
-    """Test that total voxel count is correctly calculated from LabelIndex."""
-    # Create a label index with multiple blocks and supervoxels
-    blocks = {
-        (0, 0, 0): {1: 1000, 2: 500},  # Block at (0,0,0) with 2 supervoxels
-        (0, 0, 1): {1: 2000},          # Block at (0,0,1) with 1 supervoxel
-        (0, 1, 0): {2: 1500}           # Block at (0,1,0) with 1 supervoxel
-    }
-    label_index_data = create_label_index(42, blocks)
-    
-    # Count total voxels
-    total = count_total_voxels(label_index_data)
-    
-    # Expected total is sum of all supervoxel counts
-    expected = 1000 + 500 + 2000 + 1500
-    assert total == expected
+from dvid_point_cloud.sampling import uniform_sample
 
 
 def test_parse_rles(create_sparse_volume):
@@ -41,12 +23,18 @@ def test_parse_rles(create_sparse_volume):
     sparse_vol_data = create_sparse_volume(runs)
     
     # Parse RLEs
-    parsed_runs = parse_rles(sparse_vol_data)
+    starts_zyx, lengths = parse_rles(sparse_vol_data)
     
     # Check that parsed runs match input runs
-    assert len(parsed_runs) == len(runs)
-    for i, run in enumerate(runs):
-        assert parsed_runs[i] == run
+    assert len(starts_zyx) == len(runs)
+    assert len(lengths) == len(runs)
+    
+    # Check that the values match (note: starts_zyx is in ZYX order)
+    for i, (x, y, z, length) in enumerate(runs):
+        assert starts_zyx[i, 0] == z
+        assert starts_zyx[i, 1] == y
+        assert starts_zyx[i, 2] == x
+        assert lengths[i] == length
 
 
 def test_rles_to_points():
@@ -75,7 +63,7 @@ def test_rles_to_points():
     np.testing.assert_array_equal(points, expected)
 
 
-def test_uniform_sample_integration(mock_server, create_label_index, create_sparse_volume, generate_sparse_volume):
+def test_uniform_sample_integration(mock_server, create_sparse_volume, generate_sparse_volume):
     """Integration test for uniform_sample function."""
     # Set up test parameters
     server = "http://test-server"
@@ -86,15 +74,12 @@ def test_uniform_sample_integration(mock_server, create_label_index, create_spar
     
     # Generate a random sparse volume
     size = (128, 128, 128)
-    blocks, runs, total_voxels = generate_sparse_volume(size, label_id, density=0.2, seed=42)
+    _, runs, total_voxels = generate_sparse_volume(size, label_id, density=0.2, seed=42)
     
-    # Create label index and sparse volume data
-    label_index_data = create_label_index(label_id, blocks)
+    # Create sparse volume data
     sparse_vol_data = create_sparse_volume(runs)
     
     # Configure mock server
-    mock_server.get(f"{server}/api/node/{uuid}/{instance}/index/{label_id}",
-                   content=label_index_data)
     mock_server.get(f"{server}/api/node/{uuid}/{instance}/sparsevol/{label_id}?format=rles",
                    content=sparse_vol_data)
     
@@ -114,7 +99,7 @@ def test_uniform_sample_integration(mock_server, create_label_index, create_spar
     assert np.all(point_cloud[:, 2] < size[2])
 
 
-def test_uniform_sample_fuzz(mock_server, create_label_index, create_sparse_volume, generate_sparse_volume):
+def test_uniform_sample_fuzz(mock_server, create_sparse_volume, generate_sparse_volume):
     """Fuzz test for uniform_sample with different random seeds."""
     # Set up test parameters
     server = "http://test-server"
@@ -126,15 +111,12 @@ def test_uniform_sample_fuzz(mock_server, create_label_index, create_sparse_volu
     for seed in range(5):
         # Generate a random sparse volume
         size = (128, 128, 128)
-        blocks, runs, total_voxels = generate_sparse_volume(size, label_id, density=0.3, seed=seed)
+        _, runs, total_voxels = generate_sparse_volume(size, label_id, density=0.3, seed=seed)
         
-        # Create label index and sparse volume data
-        label_index_data = create_label_index(label_id, blocks)
+        # Create sparse volume data
         sparse_vol_data = create_sparse_volume(runs)
         
         # Configure mock server
-        mock_server.get(f"{server}/api/node/{uuid}/{instance}/index/{label_id}",
-                       content=label_index_data)
         mock_server.get(f"{server}/api/node/{uuid}/{instance}/sparsevol/{label_id}?format=rles",
                        content=sparse_vol_data)
         
