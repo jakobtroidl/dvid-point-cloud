@@ -9,20 +9,7 @@ import pytest
 
 from dvid_point_cloud.client import DVIDClient
 from dvid_point_cloud.parse import parse_rles, rles_to_points
-from dvid_point_cloud.sampling import count_voxels_from_rles, uniform_sample
-
-
-def test_count_voxels_from_rles():
-    """Test that total voxel count is correctly calculated from RLE lengths."""
-    # Create some example RLE lengths
-    lengths = np.array([10, 20, 30, 5, 15])
-    
-    # Count total voxels
-    total = count_voxels_from_rles(lengths)
-    
-    # Expected total is sum of all lengths
-    expected = 10 + 20 + 30 + 5 + 15
-    assert total == expected
+from dvid_point_cloud.sampling import uniform_sample
 
 
 def test_parse_rles(create_sparse_volume):

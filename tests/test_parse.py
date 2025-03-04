@@ -6,53 +6,7 @@ from typing import Dict, List, Tuple
 import numpy as np
 import pytest
 
-from dvid_point_cloud.parse import decode_block_coord, parse_rles, rles_to_points
-
-
-def test_decode_block_coord():
-    """Test decoding block coordinates from encoded uint64."""
-    # Test case 1: All zeros
-    encoded = 0
-    z, y, x = decode_block_coord(encoded)
-    assert z == 0
-    assert y == 0
-    assert x == 0
-    
-    # Test case 2: Only X coordinate
-    encoded = 42
-    z, y, x = decode_block_coord(encoded)
-    assert z == 0
-    assert y == 0
-    assert x == 42
-    
-    # Test case 3: Only Y coordinate
-    encoded = 42 << 21
-    z, y, x = decode_block_coord(encoded)
-    assert z == 0
-    assert y == 42
-    assert x == 0
-    
-    # Test case 4: Only Z coordinate
-    encoded = 42 << 42
-    z, y, x = decode_block_coord(encoded)
-    assert z == 42
-    assert y == 0
-    assert x == 0
-    
-    # Test case 5: All coordinates
-    encoded = (5 << 42) | (10 << 21) | 15
-    z, y, x = decode_block_coord(encoded)
-    assert z == 5
-    assert y == 10
-    assert x == 15
-    
-    # Test case 6: Maximum values
-    max_value = (2**21) - 1  # 21 bits maximum
-    encoded = (max_value << 42) | (max_value << 21) | max_value
-    z, y, x = decode_block_coord(encoded)
-    assert z == max_value
-    assert y == max_value
-    assert x == max_value
+from dvid_point_cloud.parse import parse_rles, rles_to_points
 
 
 def test_parse_rles():

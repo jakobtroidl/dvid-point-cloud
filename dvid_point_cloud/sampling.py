@@ -8,27 +8,11 @@ import pandas as pd
 
 from .client import DVIDClient
 from .parse import (
-    decode_block_coord, 
     parse_rles, 
-    rles_to_points, 
     vectorized_sample_from_rles
 )
 
 logger = logging.getLogger(__name__)
-
-
-def count_voxels_from_rles(lengths: np.ndarray) -> int:
-    """
-    Count total voxels from RLE lengths.
-    
-    Args:
-        lengths: Array of run lengths
-        
-    Returns:
-        Total number of voxels
-    """
-    return lengths.sum()
-
 
 def uniform_sample(server: str, uuid: str, label_id: int, 
                   density_or_count: Union[float, int],
@@ -72,8 +56,8 @@ def uniform_sample(server: str, uuid: str, label_id: int,
     # Parse RLEs into starts_zyx and lengths arrays
     starts_zyx, lengths = parse_rles(sparse_vol_data)
     
-    # Calculate total voxels for this label from the RLEs
-    total_voxels = count_voxels_from_rles(lengths)
+    # Calculate total # voxels for this label from the RLEs
+    total_voxels = lengths.sum()
     logger.info(f"Label {label_id} has {total_voxels} total voxels")
     
     # Determine how many sample points we need
