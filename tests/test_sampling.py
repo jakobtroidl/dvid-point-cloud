@@ -36,12 +36,18 @@ def test_parse_rles(create_sparse_volume):
     sparse_vol_data = create_sparse_volume(runs)
     
     # Parse RLEs
-    parsed_runs = parse_rles(sparse_vol_data)
+    starts_zyx, lengths = parse_rles(sparse_vol_data)
     
     # Check that parsed runs match input runs
-    assert len(parsed_runs) == len(runs)
-    for i, run in enumerate(runs):
-        assert parsed_runs[i] == run
+    assert len(starts_zyx) == len(runs)
+    assert len(lengths) == len(runs)
+    
+    # Check that the values match (note: starts_zyx is in ZYX order)
+    for i, (x, y, z, length) in enumerate(runs):
+        assert starts_zyx[i, 0] == z
+        assert starts_zyx[i, 1] == y
+        assert starts_zyx[i, 2] == x
+        assert lengths[i] == length
 
 
 def test_rles_to_points():

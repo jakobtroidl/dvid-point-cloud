@@ -118,7 +118,11 @@ def test_get_label_blocks(mock_server):
     
     request = mock_server.request_history[0]
     assert request.method == "GET"
-    assert request.url == f"{server}/api/node/{uuid}/{instance}/specificblocks?blocks={block_coords}&scale=0"
+    # Use requests' unquote to handle URL encoding differences
+    import urllib.parse
+    request_url = urllib.parse.unquote(request.url)
+    expected_url = f"{server}/api/node/{uuid}/{instance}/specificblocks?blocks={block_coords}&scale=0"
+    assert request_url == expected_url
     
     # Test with custom scale and supervoxels params
     mock_server.get(f"{server}/api/node/{uuid}/{instance}/specificblocks?blocks={block_coords}&scale=2&supervoxels=true",
@@ -131,4 +135,7 @@ def test_get_label_blocks(mock_server):
     
     request = mock_server.request_history[1]
     assert request.method == "GET"
-    assert request.url == f"{server}/api/node/{uuid}/{instance}/specificblocks?blocks={block_coords}&scale=2&supervoxels=true"
+    import urllib.parse
+    request_url = urllib.parse.unquote(request.url)
+    expected_url = f"{server}/api/node/{uuid}/{instance}/specificblocks?blocks={block_coords}&scale=2&supervoxels=true"
+    assert request_url == expected_url
