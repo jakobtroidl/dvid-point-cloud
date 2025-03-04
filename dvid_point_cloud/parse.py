@@ -131,31 +131,3 @@ def rles_to_points(runs: List[Tuple[int, int, int, int]], total_voxels: int,
     return points
 
 
-def vectorized_sample_from_rles(starts_zyx: np.ndarray, lengths: np.ndarray, 
-                               num_points: int) -> np.ndarray:
-    """
-    Generate a point cloud sample from run-length encoded data using vectorized operations.
-    
-    Args:
-        starts_zyx: Array of shape (N, 3) with the ZYX start coordinates of each run
-        lengths: Array of shape (N,) with the length of each run
-        num_points: Number of points to sample
-        
-    Returns:
-        Array of shape (num_points, 3) with the ZYX coordinates of sampled points
-    """
-    # Sample rows with probability proportional to run length
-    chosen_rows = np.random.choice(
-        len(starts_zyx),
-        num_points,
-        replace=True,
-        p=lengths / lengths.sum()
-    )
-    
-    # Get the start coordinates for each sampled row
-    points_zyx = starts_zyx[chosen_rows].copy()
-    
-    # Add random offset in the X dimension (Z in ZYX coordinates)
-    points_zyx[:, 2] += np.random.randint(0, lengths[chosen_rows])
-    
-    return points_zyx
