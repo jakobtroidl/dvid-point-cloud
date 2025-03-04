@@ -65,7 +65,7 @@ points_s3 = dpc.uniform_sample(server, uuid, label_id, density, scale=3)
 Sample a specific number of points instead of a density:
 
 ```python
-# Sample 1000 points (possibly but unlikely duplicates exist)
+# Sample 1000 points
 points = dpc.uniform_sample(server, uuid, label_id, 1000)
 ```
 
