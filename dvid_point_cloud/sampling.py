@@ -90,8 +90,8 @@ def uniform_sample(server: str, uuid: str, label_id: int,
 
 
 def sample_for_bodies(server: str, uuid: str, instance: str, body_ids: List[int], 
-                     num_points_per_body: int = 1000, scale: int = 0,
-                     supervoxels: bool = False) -> Dict[int, np.ndarray]:
+                     density_or_count: Union[float, int] = 1000, scale: int = 0,
+                     supervoxels: bool = False, output_format: str = "xyz") -> Dict[int, Union[np.ndarray, pd.DataFrame]]:
     """
     Generate point cloud samples for multiple bodies efficiently.
     
@@ -100,37 +100,38 @@ def sample_for_bodies(server: str, uuid: str, instance: str, body_ids: List[int]
         uuid: UUID of the DVID node
         instance: Name of the labelmap instance
         body_ids: List of body IDs to sample
-        num_points_per_body: Number of points to sample for each body
+        density_or_count: If 0.0001 <= value <= 1.0, treated as density (fraction of voxels).
+                         If value > 1.0, treated as the number of points to sample.
         scale: Scale level at which to fetch the sparsevol (0 is highest resolution)
         supervoxels: If True, fetch supervoxel data instead of body data
+        output_format: Output format: "xyz" for numpy array, "dataframe" for pandas DataFrame
         
     Returns:
-        Dictionary mapping body IDs to point cloud arrays (each is N×3 with XYZ coordinates)
+        Dictionary mapping body IDs to either:
+        - point cloud arrays (each is N×3 with XYZ coordinates) if output_format="xyz"
+        - pandas DataFrames with 'x', 'y', 'z' columns if output_format="dataframe"
     """
-    client = DVIDClient(server)
     result = {}
     
     for body_id in body_ids:
         try:
-            sparse_vol_data = client.get_sparse_vol(
-                uuid, instance, body_id, format="rles", scale=scale, supervoxels=supervoxels
+            # Use the existing uniform_sample function to maintain consistency
+            points = uniform_sample(
+                server=server,
+                uuid=uuid,
+                label_id=body_id,
+                density_or_count=density_or_count,
+                instance=instance,
+                scale=scale,
+                supervoxels=supervoxels,
+                output_format=output_format
             )
             
-            starts_zyx, lengths = parse_rles(sparse_vol_data)
-            
-            # Skip empty bodies or bodies with no RLEs
-            if len(lengths) == 0 or lengths.sum() == 0:
-                logger.warning(f"Body {body_id} has no voxels, skipping")
-                continue
-                
-            points_zyx = vectorized_sample_from_rles(starts_zyx, lengths, num_points_per_body)
-            
-            # Apply scale factor
-            if scale > 0:
-                points_zyx *= (2**scale)
-                
-            # Convert to XYZ
-            result[body_id] = points_zyx[:, ::-1]
+            # If points were returned (non-empty body), add to result
+            if isinstance(points, pd.DataFrame) and not points.empty:
+                result[body_id] = points
+            elif isinstance(points, np.ndarray) and points.shape[0] > 0:
+                result[body_id] = points
             
         except Exception as e:
             logger.error(f"Error sampling points for body {body_id}: {e}")
