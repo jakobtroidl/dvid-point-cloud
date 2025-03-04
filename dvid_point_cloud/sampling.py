@@ -17,30 +17,6 @@ from .parse import (
 logger = logging.getLogger(__name__)
 
 
-def count_total_voxels(label_index_data: bytes) -> int:
-    """
-    Count the total number of voxels in a label from its index.
-    
-    Args:
-        label_index_data: Protobuf serialized LabelIndex data
-        
-    Returns:
-        Total number of voxels in the label
-    """
-    # Import here to avoid circular imports
-    from .proto.labelindex_pb2 import LabelIndex
-    
-    label_index = LabelIndex()
-    label_index.ParseFromString(label_index_data)
-    
-    total_voxels = 0
-    for block_id, sv_count in label_index.blocks.items():
-        for _, count in sv_count.counts.items():
-            total_voxels += count
-    
-    return total_voxels
-
-
 def count_voxels_from_rles(lengths: np.ndarray) -> int:
     """
     Count total voxels from RLE lengths.

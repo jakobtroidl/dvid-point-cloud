@@ -20,34 +20,6 @@ def test_dvid_client_initialization():
     assert client.timeout == 120
 
 
-def test_get_label_index(mock_server):
-    """Test that the get_label_index method makes the correct HTTP request."""
-    server = "http://test-server.org"
-    uuid = "abc123"
-    instance = "segmentation"
-    label_id = 42
-    
-    # Create mock response content
-    mock_content = b"mock protobuf data"
-    
-    # Configure mock server
-    mock_server.get(f"{server}/api/node/{uuid}/{instance}/index/{label_id}",
-                  content=mock_content)
-    
-    # Call the method
-    client = DVIDClient(server)
-    response = client.get_label_index(uuid, instance, label_id)
-    
-    # Check that the response is correct
-    assert response == mock_content
-    
-    # Check that the request was made correctly
-    assert mock_server.called
-    assert mock_server.call_count == 1
-    
-    request = mock_server.request_history[0]
-    assert request.method == "GET"
-    assert request.url == f"{server}/api/node/{uuid}/{instance}/index/{label_id}"
 
 
 def test_get_sparse_vol(mock_server):

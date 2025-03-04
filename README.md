@@ -141,16 +141,6 @@ print(json.dumps(layer_json))
 - numpy
 - pandas
 - requests
-- protobuf
-
-## Building Protocol Buffers
-
-The protocol buffer definitions need to be compiled before use:
-
-```bash
-cd dvid_point_cloud/proto
-protoc --python_out=. labelindex.proto
-```
 
 ## Performance
 
@@ -187,3 +177,6 @@ flake8 dvid_point_cloud
 # Run type checker
 mypy dvid_point_cloud
 ```
+
+
+
