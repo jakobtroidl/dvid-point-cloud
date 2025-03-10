@@ -1,7 +1,7 @@
 """Functions for sampling point clouds from DVID."""
 
 import logging
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict, List, Union, Callable
 
 import numpy as np
 import pandas as pd
@@ -11,10 +11,64 @@ from .parse import parse_rles
 
 logger = logging.getLogger(__name__)
 
-def vectorized_sample_from_rles(starts_zyx: np.ndarray, lengths: np.ndarray, 
-                               num_points: int) -> np.ndarray:
+def accurate_sample_rles(starts_zyx: np.ndarray, lengths: np.ndarray, num_points: int) -> np.ndarray:
     """
     Generate a point cloud sample from run-length encoded data using vectorized operations.
+    Ensures unique points are selected.
+    
+    Args:
+        starts_zyx: Array of shape (N, 3) with the ZYX start coordinates of each run
+        lengths: Array of shape (N,) with the length of each run
+        num_points: Number of points to sample
+        
+    Returns:
+        Array of shape (num_points, 3) with the ZYX coordinates of sampled points
+    """
+    total_voxels = np.sum(lengths)
+    
+    # If more points are requested than exist, cap at total voxels
+    actual_num_points = min(num_points, total_voxels)
+    
+    # Create cumulative sums to map flat indices to runs
+    cum_lengths = np.cumsum(lengths)
+    
+    # Generate unique random indices in the range [0, total_voxels-1]
+    # This ensures we don't have duplicates
+    if actual_num_points < total_voxels:
+        # Only generate a random subset if we're not taking all voxels
+        flat_indices = np.random.choice(total_voxels, actual_num_points, replace=False)
+    else:
+        # If we're taking all voxels, just use sequential indices
+        flat_indices = np.arange(total_voxels)
+    
+    # For each flat index, find which run it belongs to
+    # searchsorted returns the index where the value would be inserted to maintain order
+    run_indices = np.searchsorted(cum_lengths, flat_indices, side='right')
+    
+    # Calculate the offsets within each run
+    offsets = np.zeros_like(flat_indices)
+    
+    # For the first run, the offset is just the flat index
+    mask_first_run = (run_indices == 0)
+    offsets[mask_first_run] = flat_indices[mask_first_run]
+    
+    # For subsequent runs, subtract the end of the previous run
+    mask_other_runs = (run_indices > 0)
+    offsets[mask_other_runs] = flat_indices[mask_other_runs] - cum_lengths[run_indices[mask_other_runs] - 1]
+    
+    # Get the start coordinates for each point
+    points_zyx = starts_zyx[run_indices].copy()
+    
+    # Add offsets in the X dimension (which is the 3rd column in ZYX coordinates)
+    points_zyx[:, 2] += offsets
+    
+    return points_zyx
+
+
+def fast_sample_rles(starts_zyx: np.ndarray, lengths: np.ndarray, num_points: int) -> np.ndarray:
+    """
+    Generate a point cloud sample from run-length encoded data using few vectorized operations.
+    Results could have duplicates but unlikely.
     
     Args:
         starts_zyx: Array of shape (N, 3) with the ZYX start coordinates of each run
@@ -40,15 +94,16 @@ def vectorized_sample_from_rles(starts_zyx: np.ndarray, lengths: np.ndarray,
     
     return points_zyx
 
+
 def uniform_sample(server: str, uuid: str, label_id: int, 
                   density_or_count: Union[float, int],
                   instance: str = "segmentation",
                   scale: int = 0,
                   supervoxels: bool = False,
-                  output_format: str = "xyz") -> Union[np.ndarray, pd.DataFrame]:
+                  output_format: str = "xyz",
+                  sample_from_rles_func: Callable = fast_sample_rles) -> Union[np.ndarray, pd.DataFrame]:
     """
     Generate a uniform point cloud sample from a DVID label using a vectorized approach.
-    Note that there's no guarantee that all points will be unique though it's likely.
     
     Args:
         server: DVID server URL
@@ -100,7 +155,7 @@ def uniform_sample(server: str, uuid: str, label_id: int,
         logger.info(f"Sampling {num_samples} points (density: {density:.6f})")
     
     # Generate point cloud using vectorized approach
-    points_zyx = vectorized_sample_from_rles(starts_zyx, lengths, num_samples)
+    points_zyx = sample_from_rles_func(starts_zyx, lengths, num_samples)
     
     # Apply scale factor to convert from downsampled coordinates to full resolution if needed
     if scale > 0:
