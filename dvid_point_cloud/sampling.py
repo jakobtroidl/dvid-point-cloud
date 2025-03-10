@@ -1,7 +1,7 @@
 """Functions for sampling point clouds from DVID."""
 
 import logging
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict, List, Union, Callable
 
 import numpy as np
 import pandas as pd
@@ -11,8 +11,7 @@ from .parse import parse_rles
 
 logger = logging.getLogger(__name__)
 
-def vectorized_sample_from_rles(starts_zyx: np.ndarray, lengths: np.ndarray, 
-                               num_points: int) -> np.ndarray:
+def accurate_sample_rles(starts_zyx: np.ndarray, lengths: np.ndarray, num_points: int) -> np.ndarray:
     """
     Generate a point cloud sample from run-length encoded data using vectorized operations.
     Ensures unique points are selected.
@@ -65,12 +64,44 @@ def vectorized_sample_from_rles(starts_zyx: np.ndarray, lengths: np.ndarray,
     
     return points_zyx
 
+
+def fast_sample_rles(starts_zyx: np.ndarray, lengths: np.ndarray, num_points: int) -> np.ndarray:
+    """
+    Generate a point cloud sample from run-length encoded data using few vectorized operations.
+    Results could have duplicates but unlikely.
+    
+    Args:
+        starts_zyx: Array of shape (N, 3) with the ZYX start coordinates of each run
+        lengths: Array of shape (N,) with the length of each run
+        num_points: Number of points to sample
+        
+    Returns:
+        Array of shape (num_points, 3) with the ZYX coordinates of sampled points
+    """
+    # Sample rows with probability proportional to run length
+    chosen_rows = np.random.choice(
+        len(starts_zyx),
+        num_points,
+        replace=True,
+        p=lengths / lengths.sum()
+    )
+    
+    # Get the start coordinates for each sampled row
+    points_zyx = starts_zyx[chosen_rows].copy()
+    
+    # Add random offset in the X dimension (Z in ZYX coordinates)
+    points_zyx[:, 2] += np.random.randint(0, lengths[chosen_rows])
+    
+    return points_zyx
+
+
 def uniform_sample(server: str, uuid: str, label_id: int, 
                   density_or_count: Union[float, int],
                   instance: str = "segmentation",
                   scale: int = 0,
                   supervoxels: bool = False,
-                  output_format: str = "xyz") -> Union[np.ndarray, pd.DataFrame]:
+                  output_format: str = "xyz",
+                  sample_from_rles_func: Callable = fast_sample_rles) -> Union[np.ndarray, pd.DataFrame]:
     """
     Generate a uniform point cloud sample from a DVID label using a vectorized approach.
     
@@ -124,7 +155,7 @@ def uniform_sample(server: str, uuid: str, label_id: int,
         logger.info(f"Sampling {num_samples} points (density: {density:.6f})")
     
     # Generate point cloud using vectorized approach
-    points_zyx = vectorized_sample_from_rles(starts_zyx, lengths, num_samples)
+    points_zyx = sample_from_rles_func(starts_zyx, lengths, num_samples)
     
     # Apply scale factor to convert from downsampled coordinates to full resolution if needed
     if scale > 0:

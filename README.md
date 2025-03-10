@@ -110,6 +110,23 @@ for body_id, points in body_points.items():
     print(f"Body {body_id}: {len(points)} points")
 ```
 
+### Guarantee Sampling With No Duplicates
+
+The default sampling function does not guarantee results have no
+duplicates (although it is unlikely). You can use a sampling function
+with no duplicates guaranteed:
+
+```python
+# Sample 1000 points with no duplicates
+points = dpc.uniform_sample(server, uuid, label_id, 1000, 
+                        sample_from_rles_func=accurate_sample_rles)
+```
+
+There is a performance hit for very large sparse volumes as shown
+in benchmarks folder.
+
+![image](benchmarks/sampling_benchmark_results.png)
+
 ### Neuroglancer Visualization
 
 Generate Neuroglancer-compatible JSON for point cloud visualization:
