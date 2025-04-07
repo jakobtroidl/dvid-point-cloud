@@ -82,7 +82,11 @@ points = dpc.uniform_auto_scale(server, uuid, label_id, count=1000, density=0.01
 If the sparse volume for the label is too large to meet the sampling density with
 the given number of points at any level, it will return a `ValueError` exception.
 This is useful if you want to avoid using neurons that may be too large for your
-given point budget.
+given point budget. You can also use the `get_sparse_vol_stats` function to
+quickly get statistics on even extremely large neurons (e.g., 28+ billion voxels)
+as in the jupyter example below:
+
+![jupyter screenshot](./docs/uniform_auto_scale_and_stats.png)
 
 
 ### DataFrame Output
