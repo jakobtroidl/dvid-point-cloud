@@ -145,7 +145,7 @@ points = dpc.uniform_sample(server, uuid, label_id, 1000,
 There is a performance hit for very large sparse volumes as shown
 in benchmarks folder.
 
-![image](benchmarks/sampling_benchmark_results.png)
+![sampling benchmark](docs/sampling_benchmark_results.png)
 
 ### Neuroglancer Visualization
 
