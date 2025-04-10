@@ -9,7 +9,7 @@ import pytest
 
 from dvid_point_cloud.client import DVIDClient
 from dvid_point_cloud.parse import parse_rles, rles_to_points
-from dvid_point_cloud.sampling import uniform_sample
+from dvid_point_cloud.sampling import uniform_sample, label_at_point
 
 
 def test_parse_rles(create_sparse_volume):
@@ -62,6 +62,16 @@ def test_rles_to_points():
     # Check that points match expected
     np.testing.assert_array_equal(points, expected)
 
+def test_label_at_point():
+    """Test that the label at a point is correctly returned."""
+    server = "https://hemibrain-dvid.janelia.org"
+    uuid = "15aee239283143c08b827177ebee01b3"
+    instance = "segmentation"
+    point = (20000, 30000, 33000)
+    label = label_at_point(server, uuid, instance, point)
+    assert label == 2351004142
+
+    # https://hemibrain-dvid.janelia.org/api/node/15aee239283143c08b827177ebee01b3/segmentation/label/20000_30000_33000
 
 def test_uniform_sample_integration(mock_server, create_sparse_volume, generate_sparse_volume):
     """Integration test for uniform_sample function."""

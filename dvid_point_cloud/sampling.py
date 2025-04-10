@@ -5,6 +5,7 @@ from typing import Dict, List, Union, Callable
 
 import numpy as np
 import pandas as pd
+import json
 
 from .client import DVIDClient
 from .parse import parse_rles
@@ -214,6 +215,17 @@ def uniform_sample(server: str, uuid: str, label_id: int,
         return pd.DataFrame(points_xyz, columns=["x", "y", "z"])
     else:
         return points_xyz
+    
+def label_at_point(server: str, uuid: str, instance: str, point: tuple[int, int, int]) -> int:
+    """
+    Get the label at a specific point.
+    """
+    client = DVIDClient(server)
+    response = client.get_label(uuid, instance, point)  
+
+    # parse json and read "label" field
+    data = json.loads(response)
+    return data["Label"]
 
 
 def sample_for_bodies(server: str, uuid: str, instance: str, body_ids: List[int], 

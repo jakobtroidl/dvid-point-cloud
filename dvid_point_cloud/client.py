@@ -76,6 +76,30 @@ class DVIDClient:
             max_voxel=tuple(data["maxvoxel"])
         )
     
+    def get_label(self, uuid: str, instance: str, point: tuple[int, int, int]) -> bytes:
+        """
+        Get label data for a specific point.
+        
+        Args:
+            uuid: UUID of the DVID node
+            instance: Name of the labelmap instance (usually 'segmentation')
+            point: Tuple of (x, y, z) coordinates
+
+        Returns:
+            Binary encoded label data
+
+        """
+        url = f"{self.server}/api/node/{uuid}/{instance}/label/{point[0]}_{point[1]}_{point[2]}"
+
+        logger.debug(f"GET request to {url}")
+        
+        response = self.session.get(url, timeout=self.timeout)
+        response.raise_for_status()
+        
+        return response.content
+        
+        
+
     def get_sparse_vol(self, uuid: str, instance: str, label_id: int, 
                    format: str = "rles", scale: int = 0, supervoxels: bool = False) -> bytes:
         """
