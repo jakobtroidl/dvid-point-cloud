@@ -216,12 +216,12 @@ def uniform_sample(server: str, uuid: str, label_id: int,
     else:
         return points_xyz
     
-def label_at_point(server: str, uuid: str, instance: str, point: tuple[int, int, int]) -> int:
+def label_at_point(server: str, uuid: str, instance: str, point: tuple[int, int, int], supervoxels: bool = False) -> int:
     """
     Get the label at a specific point.
     """
     client = DVIDClient(server)
-    response = client.get_label(uuid, instance, point)  
+    response = client.get_label(uuid, instance, point, supervoxels=supervoxels)  
 
     # parse json and read "label" field
     data = json.loads(response)
