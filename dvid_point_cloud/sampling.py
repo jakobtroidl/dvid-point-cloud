@@ -227,6 +227,14 @@ def label_at_point(server: str, uuid: str, instance: str, point: tuple[int, int,
     data = json.loads(response)
     return data["Label"]
 
+def labels_at_points(server: str, uuid: str, instance: str, points: List[List[int]], supervoxels: bool = False) -> List[int]:
+    """
+    Get the labels at a list of points.
+    """
+    client = DVIDClient(server)
+    response = client.get_labels(uuid, instance, points, supervoxels=supervoxels)  
+    return response
+
 
 def sample_for_bodies(server: str, uuid: str, instance: str, body_ids: List[int], 
                      density_or_count: Union[float, int] = 1000, scale: int = 0,

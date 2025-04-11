@@ -1,8 +1,9 @@
 """Client for interacting with DVID HTTP API."""
 
 import logging
-from typing import Any, Dict
+from typing import Any, Dict, List
 from dataclasses import dataclass
+import json
 
 import requests
 
@@ -102,6 +103,32 @@ class DVIDClient:
         response.raise_for_status()
         
         return response.content
+
+    def get_labels(self, uuid: str, instance: str, points: List[List[int]], supervoxels: bool = False) -> List[int]:
+        """
+        Get label data for multiple points.
+        
+        Args:
+            uuid: UUID of the DVID node
+            instance: Name of the labelmap instance (usually 'segmentation')
+            points: List of Lists of (x, y, z) coordinates
+            supervoxels: If True, returns supervoxel data instead of agglomerated body data
+
+        Returns:
+            List of label IDs for each point
+        """
+        url = f"{self.server}/api/node/{uuid}/{instance}/labels"
+        
+        params = {}
+        if supervoxels:
+            params["supervoxels"] = "true"
+            
+        logger.debug(f"GET request to {url} with params {params}")
+        
+        response = self.session.get(url, params=params, json=points, timeout=self.timeout)
+        response.raise_for_status()
+        
+        return response.json()
         
         
 
