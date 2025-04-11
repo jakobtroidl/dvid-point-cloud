@@ -5,6 +5,8 @@ from typing import Dict, List, Union, Callable
 
 import numpy as np
 import pandas as pd
+import concurrent.futures
+from itertools import islice
 
 from .client import DVIDClient
 from .parse import parse_rles
@@ -215,34 +217,21 @@ def uniform_sample(server: str, uuid: str, label_id: int,
     else:
         return points_xyz
 
+def batch_generator(iterable, batch_size):
+    """Generate batches of items from an iterable."""
+    it = iter(iterable)
+    batch = list(islice(it, batch_size))
+    while batch:
+        yield batch
+        batch = list(islice(it, batch_size))
 
-def sample_for_bodies(server: str, uuid: str, instance: str, body_ids: List[int], 
-                     density_or_count: Union[float, int] = 1000, scale: int = 0,
-                     supervoxels: bool = False, output_format: str = "xyz") -> Dict[int, Union[np.ndarray, pd.DataFrame]]:
-    """
-    Generate point cloud samples for multiple bodies efficiently.
-    
-    Args:
-        server: DVID server URL
-        uuid: UUID of the DVID node
-        instance: Name of the labelmap instance
-        body_ids: List of body IDs to sample
-        density_or_count: If 0.0001 <= value <= 1.0, treated as density (fraction of voxels).
-                         If value > 1.0, treated as the number of points to sample.
-        scale: Scale level at which to fetch the sparsevol (0 is highest resolution)
-        supervoxels: If True, fetch supervoxel data instead of body data
-        output_format: Output format: "xyz" for numpy array, "dataframe" for pandas DataFrame
-        
-    Returns:
-        Dictionary mapping body IDs to either:
-        - point cloud arrays (each is N×3 with XYZ coordinates) if output_format="xyz"
-        - pandas DataFrames with 'x', 'y', 'z' columns if output_format="dataframe"
-    """
-    result = {}
-    
-    for body_id in body_ids:
+def process_batch(batch: List[int], server: str, uuid: str, instance: str, 
+                 density_or_count: Union[float, int], scale: int, 
+                 supervoxels: bool, output_format: str) -> Dict[int, Union[pd.DataFrame, np.ndarray]]:
+    """Process a batch of body IDs."""
+    batch_result = {}
+    for body_id in batch:
         try:
-            # Use the existing uniform_sample function to maintain consistency
             points = uniform_sample(
                 server=server,
                 uuid=uuid,
@@ -254,13 +243,68 @@ def sample_for_bodies(server: str, uuid: str, instance: str, body_ids: List[int]
                 output_format=output_format
             )
             
-            # If points were returned (non-empty body), add to result
             if isinstance(points, pd.DataFrame) and not points.empty:
-                result[body_id] = points
+                batch_result[body_id] = points
             elif isinstance(points, np.ndarray) and points.shape[0] > 0:
-                result[body_id] = points
-            
+                batch_result[body_id] = points
+                
         except Exception as e:
             logger.error(f"Error sampling points for body {body_id}: {e}")
+    
+    return batch_result
+
+def sample_bodies(
+    body_ids: List[int],
+    server: str,
+    uuid: str,
+    instance: str,
+    density_or_count: Union[float, int],
+    scale: int = 0,
+    supervoxels: bool = False,
+    output_format: str = "dataframe",
+    batch_size: int = 10,
+    max_workers: int = 10
+) -> Dict[int, Union[pd.DataFrame, np.ndarray]]:
+    """
+    Sample points from multiple bodies in parallel using batches.
+    
+    Args:
+        body_ids: List of body IDs to sample
+        server: DVID server URL
+        uuid: DVID UUID
+        instance: Labelmap instance name
+        density_or_count: Either density (points per voxel) or count (total points)
+        scale: Resolution scale (0 is highest resolution)
+        supervoxels: If True, sample from supervoxels instead of agglomerated bodies
+        output_format: Output format ("dataframe" or "array")
+        batch_size: Number of bodies to process in each batch
+        max_workers: Maximum number of worker threads
+        
+    Returns:
+        Dictionary mapping body IDs to their sampled points
+    """
+    result = {}
+    
+    with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+        # Submit all batches to the executor
+        future_to_batch = {
+            executor.submit(
+                process_batch,
+                batch,
+                server,
+                uuid,
+                instance,
+                density_or_count,
+                scale,
+                supervoxels,
+                output_format
+            ): batch
+            for batch in batch_generator(body_ids, batch_size)
+        }
+        
+        # Process completed batches as they finish
+        for future in concurrent.futures.as_completed(future_to_batch):
+            batch_result = future.result()
+            result.update(batch_result)
     
     return result

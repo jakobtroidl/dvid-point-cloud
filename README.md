@@ -121,7 +121,7 @@ Generate point clouds for multiple bodies:
 ```python
 body_ids = [189310, 189311, 189312]
 # sample 10% of voxels
-body_points = dpc.sample_for_bodies(
+body_points = dpc.sample_bodies(
     server, uuid, "segmentation", body_ids, 0.1, scale=0
 )
 

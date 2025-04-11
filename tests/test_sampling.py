@@ -9,7 +9,7 @@ import pytest
 
 from dvid_point_cloud.client import DVIDClient
 from dvid_point_cloud.parse import parse_rles, rles_to_points
-from dvid_point_cloud.sampling import uniform_sample
+from dvid_point_cloud.sampling import uniform_sample, sample_bodies
 
 
 def test_parse_rles(create_sparse_volume):
@@ -136,3 +136,12 @@ def test_uniform_sample_fuzz(mock_server, create_sparse_volume, generate_sparse_
             assert np.all(point_cloud[:, 0] < size[0])
             assert np.all(point_cloud[:, 1] < size[1])
             assert np.all(point_cloud[:, 2] < size[2])
+
+def test_sample_bodies():
+    """Test that the label at a point is correctly returned."""
+    server = "https://hemibrain-dvid.janelia.org"
+    uuid = "15aee239283143c08b827177ebee01b3"
+    instance = "segmentation"
+    body_ids = [2353058939, 1762359683]
+    point_clouds = sample_bodies(server, uuid, instance, body_ids, density_or_count=0.01, scale=2)
+    assert len(point_clouds.keys()) == 2
