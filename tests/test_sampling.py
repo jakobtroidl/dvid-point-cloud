@@ -63,14 +63,38 @@ def test_rles_to_points():
     np.testing.assert_array_equal(points, expected)
 
 
-def test_sample_supervoxels():
-    """Test that the label at a point is correctly returned."""
-    server = "https://hemibrain-dvid.janelia.org"
-    uuid = "15aee239283143c08b827177ebee01b3"
+def test_sample_supervoxels(mock_server):
+    """Test that supervoxel sampling works correctly."""
+    # Set up test parameters
+    server = "http://test-server"
+    uuid = "test-uuid"
     instance = "segmentation"
-    body_id = 1137590955
+    body_id = 42
+    
+    # Create mock response content
+    mock_supervoxels = [2351004142, 2353058939]
+    mock_content = json.dumps(mock_supervoxels).encode('utf-8')
+    
+    # Configure mock server
+    mock_server.get(f"{server}/api/node/{uuid}/{instance}/supervoxels/{body_id}",
+                   content=mock_content)
+    
+    # Call sample_supervoxels
     supervoxels = sample_supervoxels(server, uuid, instance, body_id)
-    assert supervoxels.shape == (4911,)
+    
+    # Check that the response is correct
+    assert isinstance(supervoxels, np.ndarray)
+    assert supervoxels.dtype == np.int64
+    np.testing.assert_array_equal(supervoxels, np.array(mock_supervoxels))
+    
+    # Check that the request was made correctly
+    assert mock_server.called
+    assert mock_server.call_count == 1
+    
+    request = mock_server.request_history[0]
+    assert request.method == "GET"
+    assert request.url == f"{server}/api/node/{uuid}/{instance}/supervoxels/{body_id}"
+
 
 def test_uniform_sample_integration(mock_server, create_sparse_volume, generate_sparse_volume):
     """Integration test for uniform_sample function."""
