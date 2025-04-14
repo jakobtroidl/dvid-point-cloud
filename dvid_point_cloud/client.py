@@ -6,6 +6,9 @@ from dataclasses import dataclass
 import json
 
 import requests
+import ast
+import numpy as np
+from numpy.typing import NDArray
 
 logger = logging.getLogger(__name__)
 
@@ -132,7 +135,20 @@ class DVIDClient:
         
         return response.json()
         
-        
+    def get_supervoxels(self, uuid: str, instance: str, body_id: int) -> NDArray[np.int64]:
+        """
+        Get supervoxel IDs for a specific body ID.
+        """
+        url = f"{self.server}/api/node/{uuid}/{instance}/supervoxels/{body_id}"
+        response = self.session.get(url, timeout=self.timeout)
+        response.raise_for_status()
+
+        # convert to array of integers
+        response = response.content.decode('utf-8')
+        response = ast.literal_eval(response)
+        response = np.array(response, dtype=np.int64)
+
+        return response
 
     def get_sparse_vol(self, uuid: str, instance: str, label_id: int, 
                    format: str = "rles", scale: int = 0, supervoxels: bool = False) -> bytes:
