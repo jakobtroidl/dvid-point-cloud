@@ -220,9 +220,9 @@ def sample_supervoxels(server: str, uuid: str, instance: str, body_id: int):
     Sample supervoxel IDs for a body ID.
     """
     client = DVIDClient(server)
-    response = client.get_supervoxels(uuid, instance, body_id)
+    supervoxel_ids = client.get_supervoxels(uuid, instance, body_id)
 
-    return response
+    return supervoxel_ids
 
 def sample_supervoxels_for_bodies(server: str, uuid: str, instance: str, body_ids: List[int]):
     """
