@@ -7,6 +7,7 @@ from dataclasses import dataclass
 import requests
 import ast
 import numpy as np
+from numpy.typing import NDArray
 
 logger = logging.getLogger(__name__)
 
@@ -78,7 +79,7 @@ class DVIDClient:
             max_voxel=tuple(data["maxvoxel"])
         )
     
-    def get_supervoxels(self, uuid: str, instance: str, body_id: int) -> bytes:
+    def get_supervoxels(self, uuid: str, instance: str, body_id: int) -> NDArray[np.int64]:
         """
         Get supervoxel IDs for a specific body ID.
         """
