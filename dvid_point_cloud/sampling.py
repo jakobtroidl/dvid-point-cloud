@@ -221,11 +221,9 @@ def label_at_point(server: str, uuid: str, instance: str, point: tuple[int, int,
     Get the label at a specific point.
     """
     client = DVIDClient(server)
-    response = client.get_label(uuid, instance, point, supervoxels=supervoxels)  
+    label = client.get_label(uuid, instance, point, supervoxels=supervoxels)  
 
-    # parse json and read "label" field
-    data = json.loads(response)
-    return data["Label"]
+    return label
 
 def labels_at_points(server: str, uuid: str, instance: str, points: List[List[int]], supervoxels: bool = False) -> List[int]:
     """

@@ -77,7 +77,7 @@ class DVIDClient:
             max_voxel=tuple(data["maxvoxel"])
         )
     
-    def get_label(self, uuid: str, instance: str, point: tuple[int, int, int], supervoxels: bool = False) -> bytes:
+    def get_label(self, uuid: str, instance: str, point: tuple[int, int, int], supervoxels: bool = False) -> int:
         """
         Get label data for a specific point.
         
@@ -101,8 +101,10 @@ class DVIDClient:
         
         response = self.session.get(url, params=params, timeout=self.timeout)
         response.raise_for_status()
+        data = json.loads(response.content)
+        label = data["Label"]
         
-        return response.content
+        return label
 
     def get_labels(self, uuid: str, instance: str, points: List[List[int]], supervoxels: bool = False) -> List[int]:
         """
